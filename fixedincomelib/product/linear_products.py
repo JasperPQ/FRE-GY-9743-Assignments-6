@@ -529,7 +529,23 @@ class ProductRFRSwap(Product):
         )
         self.compounding_method_ = compounding_method
 
-        #TODO
+        # Both legs share the schedule and payment conventions; the template uses the
+        # payment BDC and the index fixing calendar for the accrual schedule.
+        common = dict(
+            effective_date=self.effective_date_, termination_date=self.termination_date_,
+            notional=self.notional_, currency=self.currency_, accrual_basis=self.accrual_basis_,
+            business_day_convention=self.pay_business_day_convention_,
+            holiday_convention=HolidayConvention(self.on_index_.fixingCalendar().name()),
+            payment_offset=self.pay_offset_,
+            payment_business_day_convention=self.pay_business_day_convention_,
+            payment_holiday_convention=self.pay_holiday_convention_,
+        )
+        self.fixed_leg_ = InterestRateStream(
+            **common, accrual_period=self.accrual_period_, fixed_rate=self.fixed_rate_)
+        self.floating_leg_ = InterestRateStream(
+            **common, accrual_period=self.floating_leg_accrual_period_,
+            float_index=self.on_index_str_, ois_compounding=self.compounding_method_,
+            ois_spread=self.spread_, fixing_in_arrear=True)
 
         last_dt_fixed = self.fixed_leg_.last_date
         last_dt_floating = self.floating_leg_.last_date
@@ -727,7 +743,24 @@ class ProductOvernightIndexBasisSwap(Product):
 
         self.floating_leg_1_basis_ = None
         self.floating_leg_1_wo_basis_ = None
-        #TODO
+        # Same leg layout as floating_leg_1_wo_basis; only leg 1 carries the spread.
+        common = dict(
+            effective_date=self.effective_date_, termination_date=self.termination_date_,
+            notional=self.notional_, currency=self.currency_, accrual_basis=self.accrual_basis_,
+            business_day_convention=self.pay_business_day_convention_,
+            ois_compounding=self.compounding_method_, fixing_in_arrear=True,
+            payment_offset=self.pay_offset_,
+            payment_business_day_convention=self.pay_business_day_convention_,
+            payment_holiday_convention=self.pay_holiday_convention_,
+        )
+        self.floating_leg_1_ = InterestRateStream(
+            **common, accrual_period=self.accrual_period_1_, float_index=self.on_index_str_1_,
+            holiday_convention=HolidayConvention(self.on_index_1_.fixingCalendar().name()),
+            ois_spread=self.spread_)
+        self.floating_leg_2_ = InterestRateStream(
+            **common, accrual_period=self.accrual_period_2_, float_index=self.on_index_str_2_,
+            holiday_convention=HolidayConvention(self.on_index_2_.fixingCalendar().name()),
+            ois_spread=0.0)
 
         last_dt_floating_1 = self.floating_leg_1_.last_date
         last_dt_floating_2 = self.floating_leg_2_.last_date
